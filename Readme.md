@@ -1,7 +1,6 @@
-# Spring Azure Insights Product API
+# Spring Boot Application Insights Demo
 
-A Spring Boot REST API for product management with comprehensive Azure Application Insights integration. This application demonstrates best practices for cloud-native monitoring, structured exception handling, and SOLID design principles.
-
+This project demonstrates how to integrate Azure Application Insights into a Spring Boot application to monitor application performance, track exceptions, and collect custom telemetry data. The application implements a simple product management system with CRUD operations.
 ## Features
 
 - **Complete Product Management**: Create, read, update, and delete product information
@@ -10,6 +9,37 @@ A Spring Boot REST API for product management with comprehensive Azure Applicati
 - **OpenAPI Documentation**: Interactive API documentation with Swagger UI
 - **SOLID Design Principles**: Well-structured code following best practices
 - **Telemetry Tracking**: Performance metrics, custom events, and exception tracking
+
+## Technology Stack
+
+- **Java**: Version 17
+- **Spring Boot**: Version 3.4.3
+- **Spring Data JPA**: For database operations
+- **H2 Database**: In-memory database for development
+- **Azure Application Insights**: For monitoring and telemetry
+- **Lombok**: To reduce boilerplate code
+- **Swagger/OpenAPI**: For API documentation
+- **Maven**: For dependency management and build
+
+
+
+## Dependencies
+The project uses the following key dependencies for Azure Application Insights integration:
+```
+<!-- Azure Application Insights -->
+<dependency>
+    <groupId>com.microsoft.azure</groupId>
+    <artifactId>applicationinsights-spring-boot-starter</artifactId>
+    <version>2.6.4</version>
+</dependency>
+
+<dependency>
+    <groupId>com.microsoft.azure</groupId>
+    <artifactId>applicationinsights-logging-logback</artifactId>
+    <version>2.6.4</version>
+</dependency>
+
+```
 
 ## Project Structure
 
@@ -77,6 +107,11 @@ com.nexacloud.demoappinsights/
 - Maven 3.6 or higher
 - Azure Application Insights resource (for telemetry)
 
+### Application Insights Setup
+- Create an Azure Application Insights resource
+- Get the connection string/instrumentation key
+- Configure it in **application.properties**
+
 ### Configuration
 
 1. Update `application.properties` with your Azure Application Insights connection string:
@@ -101,12 +136,16 @@ The application will start on port 8080 by default.
 
 ## API Documentation
 
-After starting the application, access the Swagger UI at:
+The API is documented using Swagger/OpenAPI and can be accessed at:
 
+Swagger UI:
 ```
-http://localhost:8080/swagger-ui.html
+http://localhost:8080/swagger-ui/
 ```
-
+OpenAPI Docs:
+```
+http://localhost:8080/v3/api-docs
+```
 ## API Endpoints
 
 | Method | URL                    | Description                           |
@@ -117,6 +156,38 @@ http://localhost:8080/swagger-ui.html
 | PUT    | /api/products/{id}     | Update an existing product            |
 | DELETE | /api/products/{id}     | Delete a product                      |
 
+## Application Insights Integration
+ 
+**Configuration**
+The Application Insights configuration is done in ApplicationInsightsConfig.java:
+
+```
+@Configuration
+public class ApplicationInsightsConfig {
+@Value("${spring.application.name}")
+private String applicationName;
+
+    @Value("${azure.application-insights.connection-string}")
+    private String connectionString;
+
+    @Bean
+    public TelemetryClient telemetryClient() {
+        TelemetryConfiguration configuration = TelemetryConfiguration.createDefault();
+        configuration.setConnectionString(connectionString);
+        return new TelemetryClient(configuration);
+    }
+
+    @Bean
+    public TelemetryInitializer telemetryInitializer() {
+        return telemetry -> {
+            telemetry.getContext().getCloud().setRole(applicationName);
+            telemetry.getContext().getProperties().put("environment", "development");
+            telemetry.getContext().getComponent().setVersion("1.0.0");
+        };
+    }
+}
+```
+
 ## Telemetry
 
 The application tracks the following telemetry data:
@@ -126,10 +197,31 @@ The application tracks the following telemetry data:
 - **Exceptions**: All exceptions with contextual properties
 - **Dependencies**: Database and external API calls
 
+
+## Viewing Telemetry Data
+After running the application and generating some traffic:
+
+1. Go to the Azure Portal
+2. Navigate to your Application Insights resource
+3. Explore the various dashboards and reports:
+    - Overview
+    - Performance
+    - Failures
+    - Transaction Search
+    - Custom Events
+    - Metrics Explorer
+
+
 ## Error Handling
+The project implements a global exception handling mechanism that integrates with Application Insights:
 
-All exceptions follow a standardized format:
+- **BaseAppInsightsException**: Base exception class with telemetry integration
+- **GlobalExceptionHandler**: Central exception handler for API errors
+- **ResourceNotFoundException**: Exception for resource not found errors
+- **ValidationException**: Exception for validation errors
+- **BusinessRuleViolationException**: Exception for business rule violations
 
+All exceptions follow a standardized format and inherit from BaseAppInsightsException:
 ```json
 {
   "message": "ExceptionType: Detailed error message",
@@ -138,6 +230,27 @@ All exceptions follow a standardized format:
 }
 ```
 
-Author: Priyonuj Dey
+Exceptions are handled by the GlobalExceptionHandler class, which tracks them in Application Insights and returns appropriate error responses.
 
-Date: 01-03-2025
+### BaseAppInsightsException
+BaseAppInsightsException is a base exception class that provides telemetry integration for exceptions. It tracks the exception in Application Insights and returns a standardized error response.
+
+### GlobalExceptionHandler
+GlobalExceptionHandler is a central exception handler for API errors. It captures all exceptions and logs them to Application Insights with relevant context. It returns appropriate error responses based on the exception type.
+
+### ResourceNotFoundException
+ResourceNotFoundException is an exception thrown when a requested resource is not found. It inherits from BaseAppInsightsException and provides additional context for the resource type and ID.
+
+### ValidationException
+ValidationException is an exception thrown when a validation error occurs. It inherits from BaseAppInsightsException and provides additional context for the field and validation error message.
+
+### BusinessRuleViolationException
+BusinessRuleViolationException is an exception thrown when a business rule violation occurs. It inherits from BaseAppInsightsException and provides additional context for the rule and message.
+
+
+
+
+
+## Contributors
+Priyonuj Dey (priyonujdey.in)
+
